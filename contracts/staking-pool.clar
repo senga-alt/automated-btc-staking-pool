@@ -236,3 +236,7 @@
         insurance-balance: (var-get insurance-fund-balance)
     })
 )
+
+(define-read-only (get-risk-score (staker principal))
+    (ok (default-to u0 (map-get? risk-scores staker)))
+)
