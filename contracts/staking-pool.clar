@@ -62,3 +62,16 @@
         (ok new-score)
     )
 )
+
+(define-private (check-yield-availability)
+    (let
+        (
+            (current-block block-height)
+            (last-distribution (var-get last-distribution-block))
+        )
+        (if (>= current-block (+ last-distribution u144))
+            (ok true)
+            err-no-yield-available
+        )
+    )
+)
