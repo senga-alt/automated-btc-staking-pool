@@ -225,3 +225,14 @@
 (define-read-only (get-staker-rewards (staker principal))
     (ok (default-to u0 (map-get? staker-rewards staker)))
 )
+
+(define-read-only (get-pool-stats)
+    (ok {
+        total-staked: (var-get total-staked),
+        total-yield: (var-get total-yield),
+        current-rate: (var-get yield-rate),
+        pool-active: (var-get pool-active),
+        insurance-active: (var-get insurance-active),
+        insurance-balance: (var-get insurance-fund-balance)
+    })
+)
