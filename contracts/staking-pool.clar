@@ -50,3 +50,15 @@
         (/ (* base-yield time-factor) u10000)
     )
 )
+
+(define-private (update-risk-score (staker principal) (amount uint))
+    (let
+        (
+            (current-score (default-to u0 (map-get? risk-scores staker)))
+            (stake-factor (/ amount u100000000)) ;; Factor based on stake size
+            (new-score (+ current-score stake-factor))
+        )
+        (map-set risk-scores staker new-score)
+        (ok new-score)
+    )
+)
