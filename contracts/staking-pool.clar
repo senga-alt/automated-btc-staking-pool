@@ -35,3 +35,6 @@
     amount: uint,
     apy: uint
 })
+
+(define-map risk-scores principal uint)
+(define-map insurance-coverage principal uint)
