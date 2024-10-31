@@ -157,3 +157,32 @@
         (ok true)
     )
 )
+
+
+(define-public (distribute-yield)
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (asserts! (var-get pool-active) err-pool-inactive)
+        (try! (check-yield-availability))
+        
+        (let
+            (
+                (current-block block-height)
+                (blocks-passed (- current-block (var-get last-distribution-block)))
+                (total-yield-amount (calculate-yield (var-get total-staked) blocks-passed))
+            )
+            ;; Update total yield
+            (var-set total-yield (+ (var-get total-yield) total-yield-amount))
+            (var-set last-distribution-block current-block)
+            
+            ;; Record distribution history
+            (map-set yield-distribution-history current-block {
+                block: current-block,
+                amount: total-yield-amount,
+                apy: (var-get yield-rate)
+            })
+            
+            (ok total-yield-amount)
+        )
+    )
+)
