@@ -17,7 +17,6 @@
 (define-constant err-minimum-stake (err u108))
 (define-constant minimum-stake-amount u1000000) ;; 0.01 BTC in sats
 
-
 ;; Data Variables
 (define-data-var total-staked uint u0)
 (define-data-var total-yield uint u0)
@@ -35,7 +34,6 @@
     amount: uint,
     apy: uint
 })
-
 (define-map risk-scores principal uint)
 (define-map insurance-coverage principal uint)
 
@@ -124,7 +122,6 @@
     )
 )
 
-
 (define-public (unstake (amount uint))
     (let
         (
@@ -157,7 +154,6 @@
         (ok true)
     )
 )
-
 
 (define-public (distribute-yield)
     (begin
@@ -239,4 +235,12 @@
 
 (define-read-only (get-risk-score (staker principal))
     (ok (default-to u0 (map-get? risk-scores staker)))
+)
+
+;; Contract initialization
+(begin
+    (var-set pool-active false)
+    (var-set insurance-active false)
+    (var-set yield-rate u500) ;; 5% base APY
+    (var-set last-distribution-block block-height)
 )
