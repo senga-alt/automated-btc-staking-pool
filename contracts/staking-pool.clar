@@ -75,3 +75,15 @@
         )
     )
 )
+
+;; Public Functions
+(define-public (initialize-pool (initial-rate uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (asserts! (not (var-get pool-active)) err-already-initialized)
+        (var-set pool-active true)
+        (var-set yield-rate initial-rate)
+        (var-set last-distribution-block block-height)
+        (ok true)
+    )
+)
