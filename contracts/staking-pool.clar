@@ -38,3 +38,15 @@
 
 (define-map risk-scores principal uint)
 (define-map insurance-coverage principal uint)
+
+;; Private Functions
+(define-private (calculate-yield (amount uint) (blocks uint))
+    (let
+        (
+            (rate (var-get yield-rate))
+            (time-factor (/ blocks u144)) ;; Approximately daily blocks
+            (base-yield (* amount rate))
+        )
+        (/ (* base-yield time-factor) u10000)
+    )
+)
