@@ -87,3 +87,39 @@
         (ok true)
     )
 )
+
+(define-public (stake (amount uint))
+    (begin
+        (asserts! (var-get pool-active) err-pool-inactive)
+        (asserts! (>= amount minimum-stake-amount) err-minimum-stake)
+        
+        ;; Transfer tokens from user
+        (try! (contract-call? 'SP3DX3H4FEYZJZ586MFBS25ZW3HZDMEW92260R2PR.wrapped-bitcoin transfer 
+            amount
+            tx-sender
+            (as-contract tx-sender)
+            none
+        ))
+        
+        ;; Update staker balance
+        (let
+            (
+                (current-balance (default-to u0 (map-get? staker-balances tx-sender)))
+                (new-balance (+ current-balance amount))
+            )
+            (map-set staker-balances tx-sender new-balance)
+            (var-set total-staked (+ (var-get total-staked) amount))
+            
+            ;; Update risk score
+            (try! (update-risk-score tx-sender amount))
+            
+            ;; Set up insurance coverage if active
+            (if (var-get insurance-active)
+                (map-set insurance-coverage tx-sender amount)
+                true
+            )
+            
+            (ok true)
+        )
+    )
+)
