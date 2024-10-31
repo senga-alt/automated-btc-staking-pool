@@ -221,3 +221,7 @@
 (define-read-only (get-staker-balance (staker principal))
     (ok (default-to u0 (map-get? staker-balances staker)))
 )
+
+(define-read-only (get-staker-rewards (staker principal))
+    (ok (default-to u0 (map-get? staker-rewards staker)))
+)
