@@ -186,3 +186,33 @@
         )
     )
 )
+
+(define-public (claim-rewards)
+    (begin
+        (asserts! (var-get pool-active) err-pool-inactive)
+        
+        (let
+            (
+                (staker-balance (default-to u0 (map-get? staker-balances tx-sender)))
+                (current-rewards (default-to u0 (map-get? staker-rewards tx-sender)))
+                (blocks-passed (- block-height (var-get last-distribution-block)))
+                (new-rewards (calculate-yield staker-balance blocks-passed))
+                (total-rewards (+ current-rewards new-rewards))
+            )
+            (asserts! (> total-rewards u0) err-no-yield-available)
+            
+            ;; Transfer rewards
+            (try! (as-contract (contract-call? 'SP3DX3H4FEYZJZ586MFBS25ZW3HZDMEW92260R2PR.wrapped-bitcoin transfer
+                total-rewards
+                (as-contract tx-sender)
+                tx-sender
+                none
+            )))
+            
+            ;; Reset rewards
+            (map-set staker-rewards tx-sender u0)
+            
+            (ok total-rewards)
+        )
+    )
+)
