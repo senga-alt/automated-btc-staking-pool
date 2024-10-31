@@ -1,9 +1,6 @@
 ;; Bitcoin Staking Pool with Yield Optimization
 
 
-(use-trait ft-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
-(use-trait nft-trait 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.nft-trait.nft-trait)
-
 ;; Constants
 (define-constant contract-owner tx-sender)
 (define-constant err-owner-only (err u100))
@@ -15,6 +12,7 @@
 (define-constant err-insufficient-balance (err u106))
 (define-constant err-no-yield-available (err u107))
 (define-constant err-minimum-stake (err u108))
+(define-constant err-unauthorized (err u109))
 (define-constant minimum-stake-amount u1000000) ;; 0.01 BTC in sats
 
 ;; Data Variables
@@ -25,6 +23,9 @@
 (define-data-var yield-rate uint u0)
 (define-data-var last-distribution-block uint u0)
 (define-data-var insurance-fund-balance uint u0)
+(define-data-var token-name (string-ascii 32) "Staked BTC")
+(define-data-var token-symbol (string-ascii 10) "stBTC")
+(define-data-var token-uri (optional (string-utf8 256)) none)
 
 ;; Data Maps
 (define-map staker-balances principal uint)
@@ -36,6 +37,26 @@
 })
 (define-map risk-scores principal uint)
 (define-map insurance-coverage principal uint)
+(define-map allowances { owner: principal, spender: principal } uint)
+
+;; SIP-010 Functions
+(define-read-only (get-name)
+    (ok (var-get token-name)))
+
+(define-read-only (get-symbol)
+    (ok (var-get token-symbol)))
+
+(define-read-only (get-decimals)
+    (ok u8))
+
+(define-read-only (get-balance (account principal))
+    (ok (default-to u0 (map-get? staker-balances account))))
+
+(define-read-only (get-total-supply)
+    (ok (var-get total-staked)))
+
+(define-read-only (get-token-uri)
+    (ok (var-get token-uri)))
 
 ;; Private Functions
 (define-private (calculate-yield (amount uint) (blocks uint))
@@ -57,7 +78,7 @@
             (new-score (+ current-score stake-factor))
         )
         (map-set risk-scores staker new-score)
-        (ok new-score)
+        new-score
     )
 )
 
@@ -71,6 +92,19 @@
             (ok true)
             err-no-yield-available
         )
+    )
+)
+
+(define-private (transfer-internal (amount uint) (sender principal) (recipient principal))
+    (let
+        (
+            (sender-balance (default-to u0 (map-get? staker-balances sender)))
+        )
+        (asserts! (>= sender-balance amount) err-insufficient-balance)
+        
+        (map-set staker-balances sender (- sender-balance amount))
+        (map-set staker-balances recipient (+ (default-to u0 (map-get? staker-balances recipient)) amount))
+        (ok true)
     )
 )
 
@@ -91,14 +125,6 @@
         (asserts! (var-get pool-active) err-pool-inactive)
         (asserts! (>= amount minimum-stake-amount) err-minimum-stake)
         
-        ;; Transfer tokens from user
-        (try! (contract-call? 'SP3DX3H4FEYZJZ586MFBS25ZW3HZDMEW92260R2PR.wrapped-bitcoin transfer 
-            amount
-            tx-sender
-            (as-contract tx-sender)
-            none
-        ))
-        
         ;; Update staker balance
         (let
             (
@@ -108,8 +134,8 @@
             (map-set staker-balances tx-sender new-balance)
             (var-set total-staked (+ (var-get total-staked) amount))
             
-            ;; Update risk score
-            (try! (update-risk-score tx-sender amount))
+            ;; Update risk score without using try!
+            (update-risk-score tx-sender amount)
             
             ;; Set up insurance coverage if active
             (if (var-get insurance-active)
@@ -132,14 +158,6 @@
         
         ;; Process pending rewards before unstaking
         (try! (claim-rewards))
-        
-        ;; Transfer tokens back to user
-        (try! (as-contract (contract-call? 'SP3DX3H4FEYZJZ586MFBS25ZW3HZDMEW92260R2PR.wrapped-bitcoin transfer
-            amount
-            (as-contract tx-sender)
-            tx-sender
-            none
-        )))
         
         ;; Update balances
         (map-set staker-balances tx-sender (- current-balance amount))
@@ -197,19 +215,29 @@
             )
             (asserts! (> total-rewards u0) err-no-yield-available)
             
-            ;; Transfer rewards
-            (try! (as-contract (contract-call? 'SP3DX3H4FEYZJZ586MFBS25ZW3HZDMEW92260R2PR.wrapped-bitcoin transfer
-                total-rewards
-                (as-contract tx-sender)
-                tx-sender
-                none
-            )))
-            
-            ;; Reset rewards
+            ;; Update rewards balance
             (map-set staker-rewards tx-sender u0)
+            (map-set staker-balances tx-sender (+ staker-balance total-rewards))
             
             (ok total-rewards)
         )
+    )
+)
+
+;; Transfer and Allowance Functions
+(define-public (transfer (amount uint) (sender principal) (recipient principal) (memo (optional (buff 34))))
+    (begin
+        (asserts! (is-eq tx-sender sender) err-unauthorized)
+        (try! (transfer-internal amount sender recipient))
+        (match memo to-print (print to-print) 0x)
+        (ok true)
+    )
+)
+
+(define-public (set-token-uri (new-uri (optional (string-utf8 256))))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (ok (var-set token-uri new-uri))
     )
 )
 
