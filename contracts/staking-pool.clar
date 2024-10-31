@@ -123,3 +123,37 @@
         )
     )
 )
+
+
+(define-public (unstake (amount uint))
+    (let
+        (
+            (current-balance (default-to u0 (map-get? staker-balances tx-sender)))
+        )
+        (asserts! (var-get pool-active) err-pool-inactive)
+        (asserts! (>= current-balance amount) err-insufficient-balance)
+        
+        ;; Process pending rewards before unstaking
+        (try! (claim-rewards))
+        
+        ;; Transfer tokens back to user
+        (try! (as-contract (contract-call? 'SP3DX3H4FEYZJZ586MFBS25ZW3HZDMEW92260R2PR.wrapped-bitcoin transfer
+            amount
+            (as-contract tx-sender)
+            tx-sender
+            none
+        )))
+        
+        ;; Update balances
+        (map-set staker-balances tx-sender (- current-balance amount))
+        (var-set total-staked (- (var-get total-staked) amount))
+        
+        ;; Update insurance coverage if active
+        (if (var-get insurance-active)
+            (map-set insurance-coverage tx-sender (- current-balance amount))
+            true
+        )
+        
+        (ok true)
+    )
+)
