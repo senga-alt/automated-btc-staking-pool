@@ -26,3 +26,12 @@
 (define-data-var yield-rate uint u0)
 (define-data-var last-distribution-block uint u0)
 (define-data-var insurance-fund-balance uint u0)
+
+;; Data Maps
+(define-map staker-balances principal uint)
+(define-map staker-rewards principal uint)
+(define-map yield-distribution-history uint {
+    block: uint,
+    amount: uint,
+    apy: uint
+})
