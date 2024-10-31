@@ -16,3 +16,13 @@
 (define-constant err-no-yield-available (err u107))
 (define-constant err-minimum-stake (err u108))
 (define-constant minimum-stake-amount u1000000) ;; 0.01 BTC in sats
+
+
+;; Data Variables
+(define-data-var total-staked uint u0)
+(define-data-var total-yield uint u0)
+(define-data-var pool-active bool false)
+(define-data-var insurance-active bool false)
+(define-data-var yield-rate uint u0)
+(define-data-var last-distribution-block uint u0)
+(define-data-var insurance-fund-balance uint u0)
