@@ -216,3 +216,8 @@
         )
     )
 )
+
+;; Read-only functions
+(define-read-only (get-staker-balance (staker principal))
+    (ok (default-to u0 (map-get? staker-balances staker)))
+)
